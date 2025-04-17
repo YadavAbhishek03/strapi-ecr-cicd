@@ -2,59 +2,25 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# VPC
-resource "aws_vpc" "my_vpc" {
-  cidr_block = "10.0.0.0/16"
-  tags = {
-    Name = "my-vpc"
-  }
+# Key pair
+
+resource "aws_key_pair" "deployer" {
+  key_name   = "strapi-key"
+  public_key = file("/home/surya/devops-terraform-project/terraform/ssh-key/strapi-key.pub")
 }
 
-# Subnet
-resource "aws_subnet" "my_subnet" {
-  vpc_id            = aws_vpc.my_vpc.id
-  cidr_block        = "10.0.1.0/24"
-  availability_zone = "us-east-1a"
+# Default VPC
 
-  tags = {
-    Name = "my-subnet"
-  }
-}
-
-# Internet Gateway
-resource "aws_internet_gateway" "my_igw" {
-  vpc_id = aws_vpc.my_vpc.id
-
-  tags = {
-    Name = "my-igw"
-  }
-}
-
-# Route Table
-resource "aws_route_table" "my_route_table" {
-  vpc_id = aws_vpc.my_vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.my_igw.id
-  }
-
-  tags = {
-    Name = "my-route-table"
-  }
-}
-
-# Route Table Association
-resource "aws_route_table_association" "my_rta" {
-  subnet_id      = aws_subnet.my_subnet.id
-  route_table_id = aws_route_table.my_route_table.id
+data "aws_vpc" "default" {
+  default = true
 }
 
 # Security Group
-resource "aws_security_group" "my_sg" {
-  name        = "my-security-group"
+
+resource "aws_security_group" "strapi_sg_v4" {
+  name        = "strapi-sg-v4"
   description = "Allow SSH and HTTP"
-  vpc_id      = aws_vpc.my_vpc.id
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
     from_port   = 22
@@ -64,8 +30,8 @@ resource "aws_security_group" "my_sg" {
   }
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 1337
+    to_port     = 1337
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -76,21 +42,24 @@ resource "aws_security_group" "my_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
+  
   tags = {
-    Name = "my-security-group"
+    Name = "strapi-sg-v"
   }
 }
 
-# EC2 Instance
-resource "aws_instance" "my_ec2" {
-  ami           = "ami-0c02fb55956c7d316" # Amazon Linux 2 AMI (update as needed)
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.my_subnet.id
-  security_groups = [aws_security_group.my_sg.name]
-  key_name      = var.key_name
+# Instance
+
+resource "aws_instance" "strapi" {
+  ami                         = "ami-084568db4383264d4" # Ubuntu
+  instance_type               = "t2.medium" # Free-tier eligible
+  key_name                    = aws_key_pair.deployer.key_name
+  vpc_security_group_ids      = [aws_security_group.strapi_sg_v4.id]
+  associate_public_ip_address = true
+
+user_data = file("/home/surya/devops-terraform-project/terraform/user_data.sh")
 
   tags = {
-    Name = "my-ec2-instance"
+    Name = "StrapiInstance0"
   }
 }

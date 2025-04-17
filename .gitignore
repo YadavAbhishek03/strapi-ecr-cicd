@@ -1,0 +1,28 @@
+# Ignore Terraform state files
+terraform.tfstate
+terraform.tfstate.backup
+
+# Ignore any crash logs or temp files Terraform might create
+.crash
+*.tfplan
+*.log
+
+# Ignore SSH keys
+ssh-key/
+*.pem
+*.key
+
+# Ignore user-specific secrets or sensitive variables
+terraform.tfvars
+*.auto.tfvars
+
+# Ignore system files and editor configs
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Ignore backup files
+*~
+.terraform/
