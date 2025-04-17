@@ -1,7 +1,7 @@
 # Ignore Terraform state files
 terraform.tfstate
 terraform.tfstate.backup
-
+.terraform.lock.hcl
 # Ignore any crash logs or temp files Terraform might create
 .crash
 *.tfplan
