@@ -1,95 +1,75 @@
+# Strapi Deployment on AWS with ECS Fargate
 
-# 🚀 DevOps Terraform Project – Strapi on AWS EC2
+This project demonstrates how to deploy a Strapi application on AWS using ECS Fargate, with infrastructure managed using Terraform. The deployment includes provisioning an Application Load Balancer (ALB), VPC, subnets, ECS cluster, ECS service, and more.
 
-This project automates the deployment of a [Strapi](https://strapi.io/) application on an AWS EC2 instance using Terraform.
+## Prerequisites
 
----
-
-## 📁 Project Structure
-
-terraform/
-    ├── main.tf # Main Terraform configuration 
-    ├── outputs.tf # Terraform output values 
-    ├── variables.tf # Terraform input variables 
-    ├── user_data.sh # Script to install and run Strapi on EC2 
-    ├── terraform.tfstate # Terraform state file (ignored) 
-    ├── terraform.tfstate.backup 
-    ├── ssh-key/ # Directory containing your SSH
+- [Terraform](https://www.terraform.io/downloads.html)
+- [Docker](https://www.docker.com/get-started)
+- [AWS Account](https://aws.amazon.com/)
+- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
+- [Yarn](https://yarnpkg.com/) (for Strapi app dependencies)
 
 
+## Setup Instructions
 
----
+### 1. Clone the Repository
 
-## 🔧 Requirements
+```bash
+git clone https://github.com/YadavAbhishek03/devops-terraform-project.git
+cd devops-terraform-project
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads)
-- AWS CLI configured with your credentials
-       aws configure
-- An AWS Key Pair for SSH access
-       ssh-keygen
+## Build and Push Docker Image
+## Before deploying, you need to build the Docker image for the Strapi app and push it to Amazon Elastic Container Registry (ECR).
 
----
+# Build Docker image
+docker build -t strapi-app .
 
-## 🌱 Setup
+# Login to AWS ECR
+aws ecr get-login-password --region <your-region> | docker login --username AWS --password-stdin <aws-account-id>.dkr.ecr.<your-region>.amazonaws.com
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/your-username/your_repo-name.git
-   cd your_repo-name/terraform
+# Tag the image for ECR
+docker tag strapi-app:latest <aws-account-id>.dkr.ecr.<your-region>.amazonaws.com/strapi-repository:latest
+
+# Push the image to ECR
+docker push <aws-account-id>.dkr.ecr.<your-region>.amazonaws.com/strapi-repository:latest
+
+## Configure Terraform
+## Ensure you have AWS credentials configured and that you have set the appropriate region and other variables.
+
+## Create or update the .env file with your AWS credentials, region, and ECR image URL.
+
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=your-region
+ECR_IMAGE_URL=<aws-account-id>.dkr.ecr.<your-region>.amazonaws.com/strapi-repository:latest
+
+## Apply Terraform Configuration
+## Run the following Terraform commands to provision AWS resources:
+
+# Initialize Terraform
+terraform init
+
+# Plan the changes
+terraform plan
+
+# Apply the changes
+terraform apply
+
+## Terraform will create all necessary resources such as ECS clusters, security groups, ALB, subnets, and ECS services. Make sure to confirm the apply action when prompted.
+
+## Access the Application
+## Once the deployment is complete, you can access the Strapi application via the Load Balancer URL. To get the Load Balancer's DNS name:
+
+# Get the DNS name of the load balancer
+terraform output load_balancer_dns_name
 
 
-## Initialize Terraform:
-   terraform init
+## Useful Terraform Commands
+terraform init : Initializes the Terraform configuration.
 
-##  Create a terraform.tfvars file:
-      aws_region    = "us-east-1"
-      instance_type = "t2.micro"
-      key_name      = "your-key-name"
-      public_key    = "ssh-rsa AAAAB3...your key"
+terraform plan : Plans the infrastructure changes.
 
-## Apply the configuration:
-    terraform apply
+terraform apply : Applies the changes and creates the infrastructure.
 
-## Access Strapi at:
-    http://<your-ec2-public-ip>:1337/admin
-
-🔐 Security
-Ensure sensitive files like your keys and state files are not pushed to version control. See .gitignore below.
-
-
-## 🧹 Cleanup: To destroy the infrastructure:
-      terraform destroy
-
-
-
----
-
-### ✅ `.gitignore`
-
-```gitignore
-# Ignore Terraform state
-*.tfstate
-*.tfstate.*
-.terraform/
-
-# Ignore secrets
-terraform.tfvars
-*.pem
-*.key
-*.crt
-
-# SSH key folder
-ssh-key/
-
-# System files
-.DS_Store
-
-# Logs
-*.log
-
-# Editor files
-*.swp
-.idea/
-.vscode/
-
->>>>>>> 33e7b74 (Created file to deploy strapi using terraform)
+terraform destroy : Destroys the resources managed by Terraform.

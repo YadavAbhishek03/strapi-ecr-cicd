@@ -1,7 +1,13 @@
-variable "public_key_path" {
-  description = "Path to your public SSH key"
-  type        = string
-  default = "/home/surya/devops-terraform-project/terraform/ssh-key/strapi-key.pub"
+variable "aws_region" {
+  default = "us-east-1"
 }
 
+variable "ecr_image_url" {
+  description = "ECR image URL"
+  type        = string
+}
 
+variable "ecs_execution_role_arn" {
+  description = "ARN of an existing ECS task execution role"
+  type        = string
+}
