@@ -17,8 +17,6 @@ WORKDIR /app
 # Copy over package.json and yarn.lock
 COPY strapi/package.json strapi/yarn.lock ./
 
-# Copy .env
-COPY strapi/.env .env
 
 # Install node modules with Yarn
 RUN yarn install
