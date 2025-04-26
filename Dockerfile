@@ -15,7 +15,7 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 # Copy over package.json and yarn.lock
-COPY strapi/package.json strapi/yarn.lock ./
+COPY strapi/package.json ./
 
 
 # Install node modules with Yarn
