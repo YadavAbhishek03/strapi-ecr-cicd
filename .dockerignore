@@ -1,6 +1,7 @@
 node_modules
 build
 .DS_Store
+.env
 strapi-key/
 iam.tf
 docker_username
