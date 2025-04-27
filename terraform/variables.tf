@@ -12,5 +12,5 @@ variable "ecr_image_url" {
 variable "ecs_execution_role_arn" {
   description = "ARN of an existing ECS task execution role"
   type        = string
-  default     = "arn:aws:iam::118273046134:role/ecsTaskExecutionRole"
+  default     = "arn:aws:iam::118273046134:role/abhi_ecsTaskExecutionRole"
 }
