@@ -97,6 +97,10 @@ resource "aws_iam_role" "ecs_task_execution_role" {
       Action = "sts:AssumeRole"
     }]
   })
+  
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Attach the ECS Task Execution Role Policy
