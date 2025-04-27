@@ -14,3 +14,9 @@ variable "ecs_execution_role_arn" {
   type        = string
   default     = "arn:aws:iam::118273046134:role/abhi_ecsTaskExecutionRole"
 }
+
+variable "db_password" {
+  description = "The password for the RDS database"
+  type        = string
+  sensitive   = true
+}
