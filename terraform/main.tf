@@ -134,7 +134,7 @@ resource "aws_ecs_task_definition" "strapi" {
   network_mode             = "awsvpc"
   cpu                      = "512"
   memory                   = "1024"
-  execution_role_arn       = var.ecs_task_execution_role_arn
+  execution_role_arn       = var.ecs_execution_role_arn
   container_definitions = jsonencode([{
     name  = "abhi-strapi"
     image = var.ecr_image_url
