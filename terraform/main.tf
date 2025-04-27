@@ -38,6 +38,30 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+# Create IAM Role for ECS Task with RDS Access
+resource "aws_iam_role" "ecs_rds_role" {
+  name               = "ecs-rds-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect    = "Allow"
+        Action    = "sts:AssumeRole"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# Attach AmazonRDSFullAccess policy to the role
+resource "aws_iam_role_policy_attachment" "ecs_rds_full_access" {
+  role       = aws_iam_role.ecs_rds_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonRDSFullAccess"
+}
+
+
 # Security Group for RDS
 resource "aws_security_group" "rds_sg" {
   name        = "rds-sg"
@@ -183,7 +207,7 @@ resource "aws_ecs_task_definition" "strapi" {
   network_mode             = "awsvpc"
   cpu                      = "512"
   memory                   = "1024"
-  execution_role_arn       = var.ecs_execution_role_arn
+  execution_role_arn       = aws_iam_role.ecs_rds_role.arn
   container_definitions = jsonencode([{
     name  = "abhi-strapi"
     image = var.ecr_image_url
