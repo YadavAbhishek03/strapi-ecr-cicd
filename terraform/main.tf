@@ -91,7 +91,6 @@ resource "aws_security_group" "ecs_sg" {
   }
 }
 
-
 # Application Load Balancer (ALB)
 resource "aws_lb" "alb" {
   name               = "abhi-strapi-alb"
