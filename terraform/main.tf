@@ -26,54 +26,6 @@ resource "aws_subnet" "public" {
   }
 }
 
-# Create DB Subnet Group
-resource "aws_db_subnet_group" "strapi_subnet_group" {
-  name       = "strapi-subnet-group"
-  subnet_ids = aws_subnet.public[*].id
-
-  tags = {
-    Name = "abhi-strapi-db-subnet-group"
-  }
-}
-
-# Security Group for RDS
-resource "aws_security_group" "rds_sg" {
-  name        = "rds-sg"
-  description = "Allow traffic to RDS"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# RDS DB Instance
-resource "aws_db_instance" "strapi_db" {
-  identifier              = "abhi-strapi-db"
-  engine                  = "postgres"
-  engine_version          = "14.6"
-  instance_class          = "db.t3.micro"
-  allocated_storage       = 20
-  storage_type            = "gp2"
-  username                = "admin"
-  password                = var.db_password # The password will be fetched from the variable
-  publicly_accessible     = true
-  skip_final_snapshot     = true
-
-  db_subnet_group_name    = aws_db_subnet_group.strapi_subnet_group.name
-  vpc_security_group_ids  = [aws_security_group.rds_sg.id]
-}
-
 # Internet Gateway
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
@@ -130,7 +82,7 @@ resource "aws_security_group" "ecs_sg" {
     from_port   = 1337
     to_port     = 1337
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    security_groups = [aws_security_group.alb_sg.id]
   }
 
   egress {
@@ -213,6 +165,7 @@ resource "aws_ecs_service" "strapi" {
   cluster         = aws_ecs_cluster.strapi.id
   task_definition = aws_ecs_task_definition.strapi.arn
   desired_count   = 1
+  health_check_grace_period_seconds = 60
   launch_type     = "FARGATE"
 
   network_configuration {

@@ -9,7 +9,6 @@ env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-  TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
 
 jobs:
   deploy:
@@ -41,6 +40,19 @@ jobs:
       run: |
         echo "Pushing Docker image to ECR"
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Create .env file
+      run: |
+        echo "APP_KEYS=${{ secrets.STRAPI_APP_KEYS }}" >> .env
+        echo "API_TOKEN_SALT=${{ secrets.STRAPI_API_TOKEN_SALT }}" >> .env
+        echo "ADMIN_JWT_SECRET=${{ secrets.STRAPI_ADMIN_JWT_SECRET }}" >> .env
+        echo "DATABASE_CLIENT=${{ secrets.STRAPI_DATABASE_CLIENT }}" >> .env
+        echo "DATABASE_FILENAME=${{ secrets.STRAPI_DATABASE_FILENAME }}" >> .env
+        echo "DATABASE_SSL=${{ secrets.STRAPI_DATABASE_SSL }}" >> .env
+        echo "HOST=${{ secrets.STRAPI_HOST }}" >> .env
+        echo "JWT_SECRET=${{ secrets.STRAPI_JWT_SECRET }}" >> .env
+        echo "PORT=${{ secrets.STRAPI_PORT }}" >> .env
+        echo "TRANSFER_TOKEN_SALT=${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }}" >> .env
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
