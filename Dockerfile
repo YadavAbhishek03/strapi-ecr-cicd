@@ -1,44 +1,25 @@
-# Use Node.js official image
-FROM node:20-alpine
+# Base image
+FROM strapi/strapi
 
-# Install dependencies & yarn
-RUN apk add --no-cache \
-  build-base \
-  python3 \
-  make \
-  g++ \
-  sqlite \
-  sqlite-dev \
-  git 
+# Set build-time variables
+ARG STRAPI_APP_KEYS
+ARG STRAPI_API_TOKEN_SALT
+ARG STRAPI_JWT_SECRET
 
-# Set working directory
-WORKDIR /app
+# Set environment variables for Strapi
+ENV STRAPI_APP_KEYS=$STRAPI_APP_KEYS
+ENV STRAPI_API_TOKEN_SALT=$STRAPI_API_TOKEN_SALT
+ENV STRAPI_JWT_SECRET=$STRAPI_JWT_SECRET
 
-# Copy over package.json and yarn.lock
-COPY strapi/package.json ./
+# Install necessary dependencies and copy your app files
+WORKDIR /srv/app
+COPY . .
 
+# Install dependencies
+RUN npm install
 
-# Install node modules with Yarn
-RUN yarn install
-
-# Copy the rest of the Strapi app
-COPY strapi/ .
-
-# Build admin panel
-RUN yarn build
-
-# Rebuild native modules for Alpine
-RUN node -e "require('child_process').execSync('npm rebuild better-sqlite3', { stdio: 'inherit' })"
-
-# Create .tmp for SQLite
-RUN mkdir -p .tmp
-
-# Set correct permissions
-RUN chown -R node:node /app
-USER node
-
-# Expose Strapi port
+# Expose port
 EXPOSE 1337
 
-# Start Strapi
-CMD ["yarn", "start"]
+# Start Strapi app
+CMD ["npm", "run", "develop"]
