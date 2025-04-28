@@ -5,6 +5,12 @@ provider "aws" {
 # VPC
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
+  enable_dns_support = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = "abhi-strapi-vpc"
+  }
 }
 
 # Public Subnets
@@ -14,53 +20,21 @@ resource "aws_subnet" "public" {
   cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
   availability_zone = data.aws_availability_zones.available.names[count.index]
   map_public_ip_on_launch = true
-}
 
-# Internet Gateway
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-}
-
-# Route Table
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
+  tags = {
+    Name = "abhi-strapi-public-subnet-${count.index}"
   }
 }
 
-# Route Table Association
-resource "aws_route_table_association" "public" {
-  count          = 2
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public.id
-}
+# Create DB Subnet Group
+resource "aws_db_subnet_group" "strapi_subnet_group" {
+  name       = "strapi-subnet-group"
+  subnet_ids = aws_subnet.public[*].id
 
-# Create IAM Role for ECS Task with RDS Access
-resource "aws_iam_role" "ecs_rds_role" {
-  name               = "ecs-rds-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect    = "Allow"
-        Action    = "sts:AssumeRole"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-      }
-    ]
-  })
+  tags = {
+    Name = "abhi-strapi-db-subnet-group"
+  }
 }
-
-# Attach AmazonRDSFullAccess policy to the role
-resource "aws_iam_role_policy_attachment" "ecs_rds_full_access" {
-  role       = aws_iam_role.ecs_rds_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonRDSFullAccess"
-}
-
 
 # Security Group for RDS
 resource "aws_security_group" "rds_sg" {
@@ -100,16 +74,27 @@ resource "aws_db_instance" "strapi_db" {
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
 }
 
-# DB Subnet Group
-resource "aws_db_subnet_group" "strapi_subnet_group" {
-  name       = "strapi-subnet-group"
-  subnet_ids = aws_subnet.public[*].id
+# Internet Gateway
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+}
 
-  tags = {
-    Name = "strapi-db-subnet-group"
+# Route Table
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
   }
 }
 
+# Route Table Association
+resource "aws_route_table_association" "public" {
+  count          = 2
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
 
 # Availability Zones
 data "aws_availability_zones" "available" {}
@@ -155,7 +140,6 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
 
 
 # Application Load Balancer (ALB)
@@ -207,7 +191,7 @@ resource "aws_ecs_task_definition" "strapi" {
   network_mode             = "awsvpc"
   cpu                      = "512"
   memory                   = "1024"
-  execution_role_arn       = aws_iam_role.ecs_rds_role.arn
+  execution_role_arn       = var.ecs_rds_role.arn
   container_definitions = jsonencode([{
     name  = "abhi-strapi"
     image = var.ecr_image_url
