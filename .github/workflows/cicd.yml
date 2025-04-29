@@ -9,16 +9,6 @@ env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-  STRAPI_ADMIN_JWT_SECRET: ${{ secrets.STRAPI_ADMIN_JWT_SECRET }}
-  STRAPI_API_TOKEN_SALT: ${{ secrets.STRAPI_API_TOKEN_SALT }}
-  STRAPI_APP_KEYS: ${{ secrets.STRAPI_APP_KEYS }}
-  STRAPI_DATABASE_CLIENT: ${{ secrets.STRAPI_DATABASE_CLIENT }}
-  STRAPI_DATABASE_FILENAME: ${{ secrets.STRAPI_DATABASE_FILENAME }}
-  STRAPI_DATABASE_SSL: ${{ secrets.STRAPI_DATABASE_SSL }}
-  STRAPI_HOST: ${{ secrets.STRAPI_HOST }}
-  STRAPI_JWT_SECRET: ${{ secrets.STRAPI_JWT_SECRET }}
-  STRAPI_PORT: ${{ secrets.STRAPI_PORT }}
-  STRAPI_TRANSFER_TOKEN_SALT: ${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }}
 
 jobs:
   deploy:
@@ -41,33 +31,24 @@ jobs:
 
     - name: Build Docker Image
       run: |
+        echo "Building Docker image for repository: $ECR_REPOSITORY"
         docker build -t $ECR_REPOSITORY:latest .
         docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        echo "Docker image tagged as: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
     - name: Push Docker Image to ECR
       run: |
+        echo "Pushing Docker image to ECR"
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-
-    - name: Create .env file for Strapi
-      run: |
-        echo "APP_KEYS=${{ secrets.STRAPI_APP_KEYS }}" >> .env
-        echo "API_TOKEN_SALT=${{ secrets.STRAPI_API_TOKEN_SALT }}" >> .env
-        echo "ADMIN_JWT_SECRET=${{ secrets.STRAPI_ADMIN_JWT_SECRET }}" >> .env
-        echo "DATABASE_CLIENT=${{ secrets.STRAPI_DATABASE_CLIENT }}" >> .env
-        echo "DATABASE_FILENAME=${{ secrets.STRAPI_DATABASE_FILENAME }}" >> .env
-        echo "DATABASE_SSL=${{ secrets.STRAPI_DATABASE_SSL }}" >> .env
-        echo "HOST=${{ secrets.STRAPI_HOST }}" >> .env
-        echo "JWT_SECRET=${{ secrets.STRAPI_JWT_SECRET }}" >> .env
-        echo "PORT=${{ secrets.STRAPI_PORT }}" >> .env
-        echo "TRANSFER_TOKEN_SALT=${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }}" >> .env
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
-        terraform_version: 1.5.7
+        terraform_version: 1.5.7  # Optional but good practice
 
-    - name: Terraform Init, Plan, and Apply
+    - name: Terraform Init, Plan and Apply
       run: |
         cd terraform
         terraform init
+        terraform plan
         terraform apply -auto-approve

@@ -108,11 +108,12 @@ resource "aws_lb_target_group" "tg" {
   target_type = "ip"
 
   health_check {
-    path                = "/admin"  # Ensure the health check path is correct
+    path                = "/health"  # Ensure the health check path is correct
     interval            = 30
     timeout             = 5
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    matcher             = "200-499"  # Accept a wider range of success codes
   }
 }
 
@@ -138,16 +139,39 @@ resource "aws_ecs_task_definition" "strapi" {
   family                   = "strapi-task"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = "512"
-  memory                   = "1024"
+  cpu                      = "1024"
+  memory                   = "2048"
   execution_role_arn       = var.ecs_execution_role_arn
+  
   container_definitions = jsonencode([{
     name  = "abhi-strapi"
     image = var.ecr_image_url
+    cpu       = 1024
+    memory    = 2048
+    essential = true
     portMappings = [{
       containerPort = 1337
       hostPort      = 1337
+      protocol      = "tcp"
     }]
+    environment = [
+      {
+        name  = "API_TOKEN_SALT"
+        value = var.api_token_salt
+      },
+      {
+        name  = "ADMIN_JWT_SECRET"
+        value = var.admin_jwt_secret
+      },
+      {
+        name  = "TRANSFER_TOKEN_SALT"
+        value = var.transfer_token_salt
+      },
+      {
+        name  = "APP_KEYS"
+        value = var.app_keys
+      }
+    ]
   }])
 
   # Adding force new revision
@@ -162,7 +186,6 @@ resource "aws_ecs_service" "strapi" {
   cluster         = aws_ecs_cluster.strapi.id
   task_definition = aws_ecs_task_definition.strapi.arn
   desired_count   = 1
-  health_check_grace_period_seconds = 60
   launch_type     = "FARGATE"
 
   network_configuration {

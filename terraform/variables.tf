@@ -15,3 +15,22 @@ variable "ecs_execution_role_arn" {
   default     = "arn:aws:iam::118273046134:role/abhi_ecsTaskExecutionRole"
 }
 
+variable "api_token_salt" {
+  description = "API Token Salt"
+  type        = string
+}
+
+variable "admin_jwt_secret" {
+  description = "Admin JWT Secret"
+  type        = string
+}
+
+variable "transfer_token_salt" {
+  description = "Transfer Token Salt"
+  type        = string
+}
+
+variable "app_keys" {
+  description = "App Keys"
+  type        = string
+}
