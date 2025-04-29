@@ -50,4 +50,8 @@ jobs:
       run: |
         cd terraform
         terraform init
-        terraform apply -auto-approve
+        terraform apply -auto-approve \
+          -var="api_token_salt=${{ secrets.STRAPI_API_TOKEN_SALT }}" \
+          -var="admin_jwt_secret=${{ secrets.STRAPI_ADMIN_JWT_SECRET }}" \
+          -var="transfer_token_salt=${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }}" \
+          -var="app_keys=${{ secrets.STRAPI_APP_KEYS }}"
