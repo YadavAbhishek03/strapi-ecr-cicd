@@ -130,7 +130,7 @@ resource "aws_ecs_cluster" "strapi" {
 
 # CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "strapi" {
-  name              = "/ecs/strapi"
+  name              = "/ecs/abhi-strapi"
   retention_in_days = 7
 }
 
