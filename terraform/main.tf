@@ -95,20 +95,37 @@ resource "aws_lb" "alb" {
   security_groups    = [aws_security_group.alb_sg.id]
 }
 
-resource "aws_lb_target_group" "tg" {
-  name        = "abhi-strapi-tg"
-  port        = 1337
+resource "aws_lb_target_group" "blue" {
+  name        = "strapi-blue-tg"
+  port        = 80
   protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
   target_type = "ip"
+  vpc_id      = aws_vpc.main.id
 
   health_check {
-    path                = "/health"
+    path                = "/"
     interval            = 30
     timeout             = 5
-    healthy_threshold   = 2
+    healthy_threshold   = 5
     unhealthy_threshold = 2
-    matcher             = "200-499"
+    matcher             = "200-399"
+  }
+}
+
+resource "aws_lb_target_group" "green" {
+  name        = "strapi-green-tg"
+  port        = 80
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.main.id
+
+  health_check {
+    path                = "/"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 5
+    unhealthy_threshold = 2
+    matcher             = "200-399"
   }
 }
 
@@ -120,6 +137,77 @@ resource "aws_lb_listener" "listener" {
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.tg.arn
+  }
+}
+
+# CodeDeploy Application
+resource "aws_codedeploy_app" "strapi_codedeploy_app" {
+  name = "strapi-codedeploy-app"
+  compute_platform = "ECS"
+}
+
+# IAM Role for CodeDeploy
+resource "aws_iam_role" "codedeploy_role" {
+  name = "codedeploy-ecs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
+      Principal = {
+        Service = "codedeploy.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "codedeploy_role_attach" {
+  role       = aws_iam_role.codedeploy_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS"
+}
+
+# CodeDeploy Deployment Group
+resource "aws_codedeploy_deployment_group" "strapi_codedeploy_group" {
+  app_name              = aws_codedeploy_app.strapi_codedeploy_app.name
+  deployment_group_name = "strapi-deploy-group"
+  service_role_arn      = aws_iam_role.codedeploy_role.arn
+  deployment_config_name = "CodeDeployDefault.ECSCanary10Percent5Minutes"
+
+  deployment_style {
+    deployment_type = "BLUE_GREEN"
+    deployment_option = "WITH_TRAFFIC_CONTROL"
+  }
+
+  blue_green_deployment_config {
+    terminate_blue_instances_on_deployment_success {
+      action = "TERMINATE"
+      termination_wait_time_in_minutes = 5
+    }
+    deployment_ready_option {
+      action_on_timeout = "CONTINUE_DEPLOYMENT"
+    }
+  }
+
+  ecs_service {
+    cluster_name = aws_ecs_cluster.strapi.name
+    service_name = aws_ecs_service.strapi_service.name
+  }
+
+  load_balancer_info {
+    target_group_pair_info {
+      prod_traffic_route {
+        listener_arns = [aws_lb_listener.strapi_listener.arn]
+      }
+
+      target_group {
+        name = aws_lb_target_group.blue.name
+      }
+
+      target_group {
+        name = aws_lb_target_group.green.name
+      }
+    }
   }
 }
 
