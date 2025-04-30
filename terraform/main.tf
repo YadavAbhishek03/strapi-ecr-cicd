@@ -148,7 +148,7 @@ resource "aws_codedeploy_app" "strapi_codedeploy_app" {
 
 # IAM Role for CodeDeploy
 resource "aws_iam_role" "codedeploy_role" {
-  name = "codedeploy-ecs-role"
+  name = "abhi-codedeploy-ecs-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
