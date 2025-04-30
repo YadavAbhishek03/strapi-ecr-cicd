@@ -103,7 +103,7 @@ resource "aws_lb_target_group" "blue" {
   vpc_id      = aws_vpc.main.id
 
   health_check {
-    path                = "/"
+    path                = "/health"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 5
@@ -120,7 +120,7 @@ resource "aws_lb_target_group" "green" {
   vpc_id      = aws_vpc.main.id
 
   health_check {
-    path                = "/"
+    path                = "/health"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 5
@@ -136,7 +136,7 @@ resource "aws_lb_listener" "listener" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.tg.arn
+    target_group_arn = aws_lb_target_group.blue.arn
   }
 }
 
@@ -191,13 +191,13 @@ resource "aws_codedeploy_deployment_group" "strapi_codedeploy_group" {
 
   ecs_service {
     cluster_name = aws_ecs_cluster.strapi.name
-    service_name = aws_ecs_service.strapi_service.name
+    service_name = aws_ecs_service.strapi.name
   }
 
   load_balancer_info {
     target_group_pair_info {
       prod_traffic_route {
-        listener_arns = [aws_lb_listener.strapi_listener.arn]
+        listener_arns = [aws_lb_listener.listener.arn]
       }
 
       target_group {
@@ -285,7 +285,7 @@ resource "aws_ecs_service" "strapi" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.tg.arn
+    target_group_arn = aws_lb_target_group.blue.arn
     container_name   = "abhi-strapi"
     container_port   = 1337
   }
