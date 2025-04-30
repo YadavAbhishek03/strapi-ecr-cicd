@@ -15,6 +15,12 @@ variable "ecs_execution_role_arn" {
   default     = "arn:aws:iam::118273046134:role/abhi_ecsTaskExecutionRole"
 }
 
+variable "codedeploy_service_role_arn" {
+  description = "ARN of an existing service role"
+  type        = string
+  default     = "arn:aws:iam::118273046134:role/abhi-codedeploy-ecs-role"
+}
+
 variable "api_token_salt" {
   description = "API Token Salt"
   type        = string

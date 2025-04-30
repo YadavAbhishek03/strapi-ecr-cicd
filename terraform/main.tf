@@ -142,36 +142,16 @@ resource "aws_lb_listener" "listener" {
 
 # CodeDeploy Application
 resource "aws_codedeploy_app" "strapi_codedeploy_app" {
-  name = "strapi-codedeploy-app"
+  name = "abhi-strapi-codedeploy-app"
   compute_platform = "ECS"
 }
 
-# IAM Role for CodeDeploy
-resource "aws_iam_role" "codedeploy_role" {
-  name = "abhi-codedeploy-ecs-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Action = "sts:AssumeRole",
-      Effect = "Allow",
-      Principal = {
-        Service = "codedeploy.amazonaws.com"
-      }
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "codedeploy_role_attach" {
-  role       = aws_iam_role.codedeploy_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS"
-}
 
 # CodeDeploy Deployment Group
 resource "aws_codedeploy_deployment_group" "strapi_codedeploy_group" {
   app_name              = aws_codedeploy_app.strapi_codedeploy_app.name
   deployment_group_name = "strapi-deploy-group"
-  service_role_arn      = aws_iam_role.codedeploy_role.arn
+  service_role_arn      = var.codedeploy_service_role_arn
   deployment_config_name = "CodeDeployDefault.ECSCanary10Percent5Minutes"
 
   deployment_style {
