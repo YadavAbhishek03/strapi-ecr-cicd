@@ -58,3 +58,14 @@ jobs:
           -var="admin_jwt_secret=${{ secrets.STRAPI_ADMIN_JWT_SECRET }}" \
           -var="transfer_token_salt=${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }}" \
           -var="app_keys=${{ secrets.STRAPI_APP_KEYS }}"
+
+
+    - name: Trigger CodeDeploy Deployment
+      run: |
+        aws deploy create-deployment \
+          --application-name abhi-strapi-codedeploy-app \
+          --deployment-group-name abhi-strapi-deploy-group \
+          --deployment-config-name CodeDeployDefault.ECSCanary10Percent5Minutes \
+          --deployment-style deploymentType=BLUE_GREEN,deploymentOption=WITH_TRAFFIC_CONTROL \
+          --region $AWS_REGION \
+          --github-location repository=${{ github.repository }},commitId=${{ github.sha }}
