@@ -103,7 +103,7 @@ resource "aws_lb_target_group" "blue" {
   vpc_id      = aws_vpc.main.id
 
   health_check {
-    path                = "/health"
+    path                = "/_health"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 5
@@ -120,7 +120,7 @@ resource "aws_lb_target_group" "green" {
   vpc_id      = aws_vpc.main.id
 
   health_check {
-    path                = "/health"
+    path                = "/_health"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 5
