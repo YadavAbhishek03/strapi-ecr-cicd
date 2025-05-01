@@ -3,7 +3,7 @@ name: CI/CD - Deploy Strapi on ECS Fargate with Terraform
 on:
   push:
     branches:
-      - main  # Trigger when you push to main branch
+      - main  # Trigger when you push to the main branch
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -16,42 +16,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Login to Amazon ECR
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Build Docker Image
-      run: |
-        echo "Building Docker image for repository: $ECR_REPOSITORY"
-        docker build -t $ECR_REPOSITORY:latest .
-        docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        echo "Docker image tagged as: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
+      - name: Build Docker Image
+        id: build-image
+        run: |
+          IMAGE_TAG=$(date +%s)
+          IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "Building Docker image..."
+          docker build -t $IMAGE_URI .
+          docker push $IMAGE_URI
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          echo "::set-output name=image_uri::$IMAGE_URI"
 
-    - name: Push Docker Image to ECR
-      run: |
-        echo "Pushing Docker image to ECR"
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: 1.5.7  # Optional but good practice
-
-    - name: Terraform Init, Plan and Apply
-      run: |
-        cd terraform
-        terraform init
-        terraform apply -auto-approve \
-          -var="api_token_salt=${{ secrets.STRAPI_API_TOKEN_SALT }}" \
-          -var="admin_jwt_secret=${{ secrets.STRAPI_ADMIN_JWT_SECRET }}" \
-          -var="transfer_token_salt=${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }}" \
-          -var="app_keys=${{ secrets.STRAPI_APP_KEYS }}"
+      - name: Terraform Init, Plan and Apply
+        run: |
+          cd terraform
+          terraform init
+          terraform apply -auto-approve \
+            -var="api_token_salt=${{ secrets.STRAPI_API_TOKEN_SALT }}" \
+            -var="admin_jwt_secret=${{ secrets.STRAPI_ADMIN_JWT_SECRET }}" \
+            -var="transfer_token_salt=${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }}" \
+            -var="app_keys=${{ secrets.STRAPI_APP_KEYS }}" \
+            -var="ecr_image_url=${{ env.IMAGE_URI }}"

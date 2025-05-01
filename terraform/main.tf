@@ -59,6 +59,14 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+  from_port   = 1337
+  to_port     = 1337
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+  }
+
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -97,13 +105,13 @@ resource "aws_lb" "alb" {
 
 resource "aws_lb_target_group" "blue" {
   name        = "abhi-strapi-blue-tg"
-  port        = 80
+  port        = 1337
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = aws_vpc.main.id
 
   health_check {
-    path                = "/_health"
+    path                = "/"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 5
@@ -114,13 +122,13 @@ resource "aws_lb_target_group" "blue" {
 
 resource "aws_lb_target_group" "green" {
   name        = "abhi-strapi-green-tg"
-  port        = 80
+  port        = 1337
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = aws_vpc.main.id
 
   health_check {
-    path                = "/_health"
+    path                = "/"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 5
@@ -129,9 +137,23 @@ resource "aws_lb_target_group" "green" {
   }
 }
 
-resource "aws_lb_listener" "listener" {
+# ALB Listeners
+# Primary Listener (Port 80) - Will be managed by CodeDeploy
+resource "aws_lb_listener" "http_80" {
   load_balancer_arn = aws_lb.alb.arn
   port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.blue.arn
+  }
+}
+
+# Secondary Listener (Port 1337) - Static mapping to current production
+resource "aws_lb_listener" "http_1337" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = 1337
   protocol          = "HTTP"
 
   default_action {
@@ -177,7 +199,7 @@ resource "aws_codedeploy_deployment_group" "strapi_codedeploy_group" {
   load_balancer_info {
     target_group_pair_info {
       prod_traffic_route {
-        listener_arns = [aws_lb_listener.listener.arn]
+        listener_arns = [aws_lb_listener.http_80.arn]
       }
 
       target_group {
@@ -274,7 +296,7 @@ resource "aws_ecs_service" "strapi" {
     container_port   = 1337
   }
 
-  depends_on = [aws_lb_listener.listener]
+  depends_on = [aws_lb_listener.http_80]
 }
 
 # CloudWatch Alarms
