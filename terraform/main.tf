@@ -48,7 +48,7 @@ resource "aws_route_table_association" "public" {
 
 # Security Groups
 resource "aws_security_group" "alb_sg" {
-  name        = "alb-sg"
+  name        = "abhi-alb-sg"
   description = "Allow HTTP"
   vpc_id      = aws_vpc.main.id
 
@@ -68,7 +68,7 @@ resource "aws_security_group" "alb_sg" {
 }
 
 resource "aws_security_group" "ecs_sg" {
-  name        = "ecs-sg"
+  name        = "abhi-ecs-sg"
   description = "Allow traffic from ALB to ECS"
   vpc_id      = aws_vpc.main.id
 
@@ -96,7 +96,7 @@ resource "aws_lb" "alb" {
 }
 
 resource "aws_lb_target_group" "blue" {
-  name        = "strapi-blue-tg"
+  name        = "abhi-strapi-blue-tg"
   port        = 80
   protocol    = "HTTP"
   target_type = "ip"
@@ -113,7 +113,7 @@ resource "aws_lb_target_group" "blue" {
 }
 
 resource "aws_lb_target_group" "green" {
-  name        = "strapi-green-tg"
+  name        = "abhi-strapi-green-tg"
   port        = 80
   protocol    = "HTTP"
   target_type = "ip"
@@ -150,7 +150,7 @@ resource "aws_codedeploy_app" "strapi_codedeploy_app" {
 # CodeDeploy Deployment Group
 resource "aws_codedeploy_deployment_group" "strapi_codedeploy_group" {
   app_name              = aws_codedeploy_app.strapi_codedeploy_app.name
-  deployment_group_name = "strapi-deploy-group"
+  deployment_group_name = "abhi-strapi-deploy-group"
   service_role_arn      = var.codedeploy_service_role_arn
   deployment_config_name = "CodeDeployDefault.ECSCanary10Percent5Minutes"
 
@@ -250,6 +250,10 @@ resource "aws_ecs_service" "strapi" {
   task_definition = aws_ecs_task_definition.strapi.arn
   desired_count   = 1
   # launch_type     = "FARGATE"
+
+  deployment_controller {
+    type = "CODE_DEPLOY"
+  }
 
   # Add capacity provider strategy for Fargate Spot
   capacity_provider_strategy {
