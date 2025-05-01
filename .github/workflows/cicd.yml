@@ -66,6 +66,5 @@ jobs:
           --application-name abhi-strapi-codedeploy-app \
           --deployment-group-name abhi-strapi-deploy-group \
           --deployment-config-name CodeDeployDefault.ECSCanary10Percent5Minutes \
-          --deployment-style deploymentType=BLUE_GREEN,deploymentOption=WITH_TRAFFIC_CONTROL \
           --region $AWS_REGION \
-          --github-location repository=${{ github.repository }},commitId=${{ github.sha }}
+          --github-location repository=YadavAbhishek03/strapi-ecr-cicd,commitId=${{ github.sha }}
