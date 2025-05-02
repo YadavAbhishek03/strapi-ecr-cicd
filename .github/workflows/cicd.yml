@@ -62,9 +62,28 @@ jobs:
 
     - name: Trigger CodeDeploy Deployment
       run: |
-        aws deploy create-deployment \
-          --application-name abhi-strapi-codedeploy-app \
-          --deployment-group-name abhi-strapi-deploy-group \
-          --deployment-config-name CodeDeployDefault.ECSCanary10Percent5Minutes \
-          --region $AWS_REGION \
-          --github-location repository=YadavAbhishek03/strapi-ecr-cicd,commitId=${{ github.sha }}
+        TASK_ARN="${{ steps.get_task_def.outputs.taskDefinitionArn }}"
+        
+          echo '{
+            "version": "1.0",
+            "Resources": [{
+              "TargetService": {
+                "Type": "AWS::ECS::Service",
+                "Properties": {
+                  "TaskDefinition": "'"$TASK_ARN"'",
+                  "LoadBalancerInfo": {
+                    "ContainerName": "strapi",
+                    "ContainerPort": 1337
+                  }
+                }
+              }
+            }]
+          }' > appspec.json
+        
+          aws deploy create-deployment \
+            --application-name strapi-app-deploy \
+            --deployment-group-name strapi-deploy-group \
+            --deployment-config-name CodeDeployDefault.ECSCanary10Percent5Minutes \
+            --region us-east-1 \
+            --revision "revisionType=AppSpecContent,appSpecContent={content=$(cat appspec.json | jq -Rs .)}"
+        
