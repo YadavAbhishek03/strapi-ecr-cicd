@@ -12,7 +12,7 @@ env:
 
 jobs:
   deploy:
-    name: Build Docker Image, Push to ECR & Deploy Infra with Terraform
+    name: Build, Push to ECR, Deploy Infra with Terraform, and Trigger CodeDeploy
     runs-on: ubuntu-latest
 
     steps:
@@ -31,35 +31,33 @@ jobs:
 
     - name: Build Docker Image
       run: |
-        echo "Building Docker image for repository: $ECR_REPOSITORY"
         docker build -t $ECR_REPOSITORY:latest .
         docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-    - name: Set IMAGE_URI environment variable
-      run: echo "IMAGE_URI=${ECR_REGISTRY}/${ECR_REPOSITORY}:latest" >> $GITHUB_ENV
-
     - name: Push Docker Image to ECR
       run: |
-        echo "Pushing Docker image to ECR"
-        docker push $IMAGE_URI
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_ENV
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: 1.5.7
 
-    - name: Terraform Init, Plan and Apply
+    - name: Terraform Init and Apply
       run: |
         cd terraform
         terraform init
         terraform apply -auto-approve \
-          -var="ecr_image_url=${IMAGE_URI}" \
+          -var="ecr_image_url=$IMAGE_URI" \
           -var="api_token_salt=${{ secrets.STRAPI_API_TOKEN_SALT }}" \
           -var="admin_jwt_secret=${{ secrets.STRAPI_ADMIN_JWT_SECRET }}" \
           -var="transfer_token_salt=${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }}" \
-          -var="app_keys=${{ secrets.STRAPI_APP_KEYS }}"
+          -var="app_keys=${{ secrets.STRAPI_APP_KEYS }}" \
+          -var="ecs_execution_role_arn=${{ secrets.ECS_EXECUTION_ROLE_ARN }}" \
+          -var="codedeploy_service_role_arn=${{ secrets.CODEDEPLOY_SERVICE_ROLE_ARN }}"
 
-    - name: Get Latest ECS Task Definition
+    - name: Get Latest Task Definition ARN
       id: get_task_def
       run: |
         TASK_ARN=$(aws ecs list-task-definitions \
@@ -74,28 +72,32 @@ jobs:
       run: |
         TASK_DEF="${{ steps.get_task_def.outputs.taskDefinitionArn }}"
 
-        echo "Generating AppSpec content..."
-        APPSPEC_CONTENT=$(jq -n --arg taskdef "$TASK_DEF" '
+        echo "Generating AppSpec file..."
+        cat <<EOF > appspec.json
         {
-          version: "1.0",
-          Resources: [{
-            TargetService: {
-              Type: "AWS::ECS::Service",
-              Properties: {
-                TaskDefinition: $taskdef,
-                LoadBalancerInfo: {
-                  ContainerName: "abhi-strapi",
-                  ContainerPort: 1337
+          "version": 1,
+          "Resources": [
+            {
+              "TargetService": {
+                "Type": "AWS::ECS::Service",
+                "Properties": {
+                  "TaskDefinition": "$TASK_DEF",
+                  "LoadBalancerInfo": {
+                    "ContainerName": "abhi-strapi",
+                    "ContainerPort": 1337
+                  }
                 }
               }
             }
-          }]
-        }')
+          ]
+        }
+        EOF
 
-        echo "Triggering CodeDeploy deployment..."
+        echo "Starting deployment..."
         aws deploy create-deployment \
           --application-name abhi-strapi-codedeploy-app \
           --deployment-group-name abhi-strapi-deploy-group \
           --deployment-config-name CodeDeployDefault.ECSCanary10Percent5Minutes \
-          --revision "revisionType=AppSpecContent,appSpecContent={content=$(echo "$APPSPEC_CONTENT" | jq -Rs .)}" \
-          --region $AWS_REGION
+          --file-exists-behavior OVERWRITE \
+          --revision file://appspec.json \
+          --description "Triggered by GitHub Actions on commit $GITHUB_SHA"
