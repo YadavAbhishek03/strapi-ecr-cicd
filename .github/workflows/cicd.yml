@@ -59,31 +59,43 @@ jobs:
           -var="transfer_token_salt=${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }}" \
           -var="app_keys=${{ secrets.STRAPI_APP_KEYS }}"
 
+    - name: Get Latest ECS Task Definition
+      id: get_task_def
+      run: |
+        TASK_ARN=$(aws ecs list-task-definitions \
+          --family-prefix strapi-task \
+          --sort DESC \
+          --max-items 1 \
+          --query 'taskDefinitionArns[0]' \
+          --output text)
+        echo "taskDefinitionArn=$TASK_ARN" >> "$GITHUB_OUTPUT"
 
     - name: Trigger CodeDeploy Deployment
       run: |
-        TASK_ARN="${{ steps.get_task_def.outputs.taskDefinitionArn }}"
-        
-          echo '{
-            "version": "1.0",
-            "Resources": [{
-              "TargetService": {
-                "Type": "AWS::ECS::Service",
-                "Properties": {
-                  "TaskDefinition": "'"$TASK_ARN"'",
-                  "LoadBalancerInfo": {
-                    "ContainerName": "strapi",
-                    "ContainerPort": 1337
-                  }
+        TASK_DEF="${{ steps.get_task_def.outputs.taskDefinitionArn }}"
+
+        echo "Generating AppSpec content..."
+        APPSPEC_CONTENT=$(jq -n --arg taskdef "$TASK_DEF" '
+        {
+          version: "1.0",
+          Resources: [{
+            TargetService: {
+              Type: "AWS::ECS::Service",
+              Properties: {
+                TaskDefinition: $taskdef,
+                LoadBalancerInfo: {
+                  ContainerName: "abhi-strapi",
+                  ContainerPort: 1337
                 }
               }
-            }]
-          }' > appspec.json
-        
-          aws deploy create-deployment \
-            --application-name strapi-app-deploy \
-            --deployment-group-name strapi-deploy-group \
-            --deployment-config-name CodeDeployDefault.ECSCanary10Percent5Minutes \
-            --region us-east-1 \
-            --revision "revisionType=AppSpecContent,appSpecContent={content=$(cat appspec.json | jq -Rs .)}"
-        
+            }
+          }]
+        }')
+
+        echo "Triggering CodeDeploy deployment..."
+        aws deploy create-deployment \
+          --application-name abhi-strapi-codedeploy-app \
+          --deployment-group-name abhi-strapi-deploy-group \
+          --deployment-config-name CodeDeployDefault.ECSCanary10Percent5Minutes \
+          --revision "revisionType=AppSpecContent,appSpecContent={content=$(echo "$APPSPEC_CONTENT" | jq -Rs .)}" \
+          --region $AWS_REGION
