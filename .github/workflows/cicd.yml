@@ -98,6 +98,10 @@ jobs:
           --application-name abhi-strapi-codedeploy-app \
           --deployment-group-name abhi-strapi-deploy-group \
           --deployment-config-name CodeDeployDefault.ECSCanary10Percent5Minutes \
-          --file-exists-behavior OVERWRITE \
-          --revision file://appspec.json \
-          --description "Triggered by GitHub Actions on commit $GITHUB_SHA"
+          --description "Triggered by GitHub Actions on commit $GITHUB_SHA" \
+          --revision "$(jq -nc --argjson content "$(cat appspec.json | jq .)" '{
+              revisionType: "AppSpecContent",
+              appSpecContent: {
+                content: ($content | tostring)
+              }
+            }')"
